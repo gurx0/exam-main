@@ -1,5 +1,8 @@
 package com.example.myapplication
 
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
+
 data class Service(
     val id: Int,
     val name: String,
@@ -9,5 +12,5 @@ data class Service(
 
 data class CartItem(
     val service: Service,
-    var quantity: Int
+    var quantity: MutableState<Int> = mutableStateOf(1)
 )

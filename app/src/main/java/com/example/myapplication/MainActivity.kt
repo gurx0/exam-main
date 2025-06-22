@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -25,12 +26,17 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment.Companion.BottomCenter
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.vector.ImageVector
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -138,9 +144,9 @@ fun ServiceCard(service: Service, cartItems: SnapshotStateList<CartItem>) {
                 onClick = {
                     val existingItem = cartItems.find { it.service.id == service.id }
                     if (existingItem != null) {
-                        existingItem.quantity++
+                        existingItem.quantity.value++
                     } else {
-                        cartItems.add(CartItem(service, 1))
+                        cartItems.add(CartItem(service))
                     }
                 },
                 modifier = Modifier.align(Alignment.End),
@@ -168,6 +174,7 @@ fun CartScreen(navController: NavController, cartItems: SnapshotStateList<CartIt
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 16.dp)
         )
+
         if (cartItems.isEmpty()) {
             Text(
                 text = "Тут пусто :)",
@@ -175,12 +182,26 @@ fun CartScreen(navController: NavController, cartItems: SnapshotStateList<CartIt
                 textAlign = TextAlign.Center
             )
         } else {
-            Column {
-                cartItems.forEach { item ->
+            LazyColumn(
+                modifier = Modifier.weight(1f)
+            ) {
+                items(
+                    items = cartItems,
+                    key = { item -> item.service.id }
+                ) { item ->
                     CartItemRow(item, cartItems)
                 }
-                Spacer(modifier = Modifier.height(16.dp))
-                val total = cartItems.sumOf { it.service.price * it.quantity }
+            }
+
+            val total by remember(cartItems) {
+                derivedStateOf {
+                    cartItems.sumOf { it.service.price * it.quantity.value }
+                }
+            }
+
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text(
                     text = "Итого: $${String.format("%.2f", total)}",
                     fontSize = 20.sp,
@@ -188,7 +209,9 @@ fun CartScreen(navController: NavController, cartItems: SnapshotStateList<CartIt
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = TextAlign.End
                 )
+
                 Spacer(modifier = Modifier.height(8.dp))
+
                 Button(
                     onClick = { /* TODO: Оформление заказа */ },
                     modifier = Modifier
@@ -221,25 +244,31 @@ fun CartItemRow(item: CartItem, cartItems: SnapshotStateList<CartItem>) {
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
-                imageVector = Icons.Default.ShoppingCart,
+                imageVector = Icons.Default.Clear,
                 contentDescription = "Decrease",
                 modifier = Modifier
                     .clickable {
-                        if (item.quantity > 1) item.quantity-- else cartItems.remove(item)
+                        if (item.quantity.value > 1) item.quantity.value-- else cartItems.remove(item)
                     }
                     .padding(8.dp)
             )
-            Text(text = "${item.quantity}", fontSize = 16.sp, modifier = Modifier.padding(horizontal = 8.dp))
+            Text(
+                text = "${item.quantity.value}",
+                fontSize = 16.sp,
+                modifier = Modifier.padding(horizontal = 8.dp)
+            )
             Icon(
-                imageVector = Icons.Default.ShoppingCart,
+                imageVector = Icons.Default.Add,
                 contentDescription = "Increase",
                 modifier = Modifier
-                    .clickable { item.quantity++ }
+                    .clickable { item.quantity.value++ }
                     .padding(8.dp)
             )
         }
     }
 }
+
+
 @Composable
 fun ProfileScreen(navController: NavController) {
     Box(
@@ -250,29 +279,77 @@ fun ProfileScreen(navController: NavController) {
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
+            // Верхняя часть — профиль
             Text(
                 text = "Профиль",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
-            Text(text = "Владимир Путин", fontSize = 18.sp, modifier = Modifier.padding(bottom = 8.dp).alpha(0.6f))
-            Text(text = "+7 777 777 77 77", fontSize = 18.sp, modifier = Modifier.padding(bottom = 8.dp).alpha(0.6f))
-            Text(text = "kreml@vpered.ru", fontSize = 18.sp, modifier = Modifier.alpha(0.6f))
+            Text(
+                text = "Владимир Путин",
+                fontSize = 18.sp,
+                modifier = Modifier.padding(bottom = 8.dp).alpha(0.6f)
+            )
+            Text(
+                text = "+7 777 777 77 77",
+                fontSize = 18.sp,
+                modifier = Modifier.padding(bottom = 8.dp).alpha(0.6f)
+            )
+            Text(
+                text = "kreml@vpered.ru",
+                fontSize = 18.sp,
+                modifier = Modifier.alpha(0.6f)
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Центр — список с иконками
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.Start
+            ) {
+                ProfileOption(Icons.Default.ShoppingCart, "Заказы")
+                ProfileOption(Icons.Default.LocationOn, "Адреса")
+                ProfileOption(Icons.Default.Settings, "Настройки")
+                ProfileOption(Icons.Default.Person, "Данные")
+            }
         }
 
+        // Нижняя часть — ссылки
         Column(
             modifier = Modifier
-                .align(BottomCenter)
+                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .padding(16.dp)
                 .alpha(0.6f),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = "Ответы на вопросы", fontSize = 18.sp,)
+            Text(text = "Ответы на вопросы", fontSize = 18.sp)
             Text(text = "Политика конфиденциальности", fontSize = 18.sp)
             Text(text = "Пользовательское соглашение", fontSize = 18.sp)
             Text(text = "Выйти", fontSize = 18.sp, color = Color.Red)
         }
+    }
+}
+
+@Composable
+fun ProfileOption(icon: ImageVector, title: String, onClick: () -> Unit = {}) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = title,
+            modifier = Modifier
+                .size(40.dp)
+                .padding(end = 16.dp),
+            tint = Color.DarkGray
+        )
+        Text(text = title, fontSize = 18.sp)
     }
 }
